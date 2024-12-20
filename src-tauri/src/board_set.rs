@@ -1,25 +1,33 @@
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::{sync::mpsc::{self, Receiver, Sender}, thread::JoinHandle};
 
-use log::{info, error};
+use log::{debug, error, info};
 use pedal_board::PedalBoard;
 use tauri::ipc::Channel;
 use thread_priority::{ThreadBuilder, ThreadPriority};
-use crate::{alsa_device::{AlsaDevice, Callback}, box_error::BoxError};
+use crate::{alsa_device::{AlsaDevice, Callback}, box_error::BoxError, utils::{get_micro_time, MicroTimer}};
 use serde_json::{json, Value};
 
 /// The BoardConnection will retain the channel to the alsa thread
 pub struct BoardConnection {
     cmd_tx: Option<Sender<Value>>,
+    handle: Option<JoinHandle<()>>,
 }
 
 impl BoardConnection {
     pub fn new() -> BoardConnection {
         BoardConnection {
             cmd_tx: None,
+            handle: None,
         }
     }
     // Gentlemen, start your engines..
     pub fn start(&mut self, channel: Channel<Value>, in_dev: String, out_dev: String) -> Result<(), BoxError> {
+        // Prevent double start
+        if  self.cmd_tx.is_some() {
+            // we have already been started
+            error!("attempting to double start audio");
+            return Err("Cannot start over!".into());
+        }
 
         // Create a channel to talk to the audio thread
         let (command_tx, command_rx): (mpsc::Sender<Value>, mpsc::Receiver<Value>) = mpsc::channel();
@@ -33,7 +41,7 @@ impl BoardConnection {
             .name("Real-Time Thread".to_string())
             .priority(ThreadPriority::Max);
 
-        let _alsa_handle = builder.spawn(move |_result| {
+        let alsa_handle = builder.spawn(move |_result| {
             match alsa_thread_run(boardset, alsa_device) {
                 Ok(()) => {
                     info!("alsa ended with OK");
@@ -43,8 +51,25 @@ impl BoardConnection {
                 }
             }
         })?;
+        self.handle = Some(alsa_handle);
         Ok(())
     }
+
+    pub fn stop(&mut self) -> Result<(), BoxError> {
+        // Prevent double stop
+        if self.cmd_tx.is_none() {
+            // we are already stopped
+            error!("attempting double stop of audio");
+            return Err("Double Stop".into());
+        }
+        self.send_command(json!({"cmd": "exit"}))?;
+        // if let Some(handle) = &mut self.handle {
+        //     handle.join();
+        // }
+        self.cmd_tx = None;
+        Ok(())
+    }
+
     // This will send a command to the box thread
     pub fn send_command(&mut self, msg: Value) -> Result<(), BoxError> {
         if let Some(tx) = &self.cmd_tx {
@@ -94,19 +119,35 @@ impl Callback for BoardSet {
 }
 
 fn alsa_thread_run(mut boardset: BoardSet, mut alsa_device: AlsaDevice) -> Result<(), BoxError> {
-
     // If we got here, we just loop and process
     info!("inside alsa_thread_run");
+    let mut now = get_micro_time();
+    let mut update_timer = MicroTimer::new(now, 150_000);
     
+    let mut frame_count: usize = 1;
     loop {
         // process a frame of audio
         alsa_device.process_a_frame(&mut boardset)?;
+        now = get_micro_time();
         // check for any incoming commands
         if let Ok(msg) = boardset.rx_cmd.try_recv() {
             info!("got message: {}", msg);
+            return Ok(());
+            // if msg["cmd"].to_string() == String::from("exit") {
+            //     info!("exiting alsa thread");
+            //     return Ok(());
+            // }
         }
         // Send any updates, but don't do this every frame
-        boardset.event_channel.send(json!({"bob": "is your uncle"}))?;
+        if update_timer.expired(now) {
+            update_timer.reset(now);
+            debug!("sending update with frame_count: {}", frame_count);
+            boardset.event_channel.send(json!({
+                "bob": "is your uncle",
+                "frame_count": frame_count,
+            }))?;
+        }
+        frame_count += 1;
     }
     // Ok(())
 }

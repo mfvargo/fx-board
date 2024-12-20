@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import reactLogo from "./assets/react.svg";
 import { invoke, Channel } from "@tauri-apps/api/core";
 import "./App.css";
 
 function App() {
+  const [statusMsg, setStatusMsg] = useState("");
   const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
   const [ev, setEv] = useState<Channel<string>>();
@@ -11,7 +11,7 @@ function App() {
   async function start_me_up() {
     const chan = new Channel<string>();
     chan.onmessage = (message: any) => {
-      console.log(message);
+      setGreetMsg(JSON.stringify(message));
     }
     setEv(chan);
   }
@@ -24,31 +24,24 @@ function App() {
   async function greet() {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     setGreetMsg(await invoke("greet", { name }));
-    // Lets start up the audio
-    console.log(await invoke("start", {
-      onEvent: ev,
-      inDev: "hw:CODEC",
-      outDev: "hw:CODEC",
-    }));
+  }
+
+  async function start_audio() {
+    setStatusMsg(await invoke("start", {
+        onEvent: ev,
+        inDev: "hw:CODEC",
+        outDev: "hw:CODEC",
+      }
+    ));
+  }
+
+  async function stop_audio() {
+    setStatusMsg(await invoke("stop", {}));
   }
 
   return (
     <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
+      <h1>FX Board</h1>
       <form
         className="row"
         onSubmit={(e) => {
@@ -63,6 +56,11 @@ function App() {
         />
         <button type="submit">Greet</button>
       </form>
+      <p className="row">
+        <button type="button" onClick={start_audio}>Start</button>
+        <button type="button" onClick={stop_audio}>Stop</button>
+      </p>
+      <p>{statusMsg}</p>
       <p>{greetMsg}</p>
     </main>
   );

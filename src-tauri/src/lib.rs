@@ -7,6 +7,7 @@ use tauri::{ipc::Channel, State};
 mod alsa_device;
 mod box_error;
 mod board_set;
+mod utils;
 
 use board_set::BoardConnection;
 
@@ -28,6 +29,18 @@ fn start(
 }
 
 #[tauri::command]
+fn stop(unit_state: State<'_, UnitState>) -> Result<(), String> {
+    info!("Stopping board set");
+    let mut board_con = unit_state.0.lock().unwrap();
+    match board_con.stop() {
+        Ok(()) => { Ok(()) }
+        Err(e) => { Err(e.to_string()) }
+    }
+}
+
+
+
+#[tauri::command]
 fn send_command(unit_state: State<'_, UnitState>, msg: Value) -> Result<(), String> {
     let mut board_con = unit_state.0.lock().unwrap();
     match board_con.send_command(msg) {
@@ -46,7 +59,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(UnitState(Mutex::new(BoardConnection::new())))
-        .invoke_handler(tauri::generate_handler![greet, start, send_command])
+        .invoke_handler(tauri::generate_handler![greet, start, stop, send_command])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

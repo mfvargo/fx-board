@@ -17,7 +17,7 @@ pub trait Callback {
 
 
 type SF = i16;
-const FRAME_SIZE: usize = 128;
+pub const FRAME_SIZE: usize = 128;
 const SAMPLE_RATE: u32 = 48_000;
 const CHANNELS: u32 = 2;
 const MAX_SAMPLE: f32 = 32766.0;
