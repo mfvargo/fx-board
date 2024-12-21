@@ -29,8 +29,8 @@ function App() {
   async function start_audio() {
     setStatusMsg(await invoke("start", {
         onEvent: ev,
-        inDev: "hw:CODEC",
-        outDev: "hw:CODEC",
+        inDev: "hw:PCH",
+        outDev: "hw:PCH",
       }
     ));
   }

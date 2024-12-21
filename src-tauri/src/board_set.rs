@@ -62,10 +62,12 @@ impl BoardConnection {
             error!("attempting double stop of audio");
             return Err("Double Stop".into());
         }
-        self.send_command(json!({"cmd": "exit"}))?;
-        // if let Some(handle) = &mut self.handle {
-        //     handle.join();
-        // }
+        match self.send_command(json!({"cmd": "exit"})) {
+            Ok(()) => { () }
+            Err(e) => {
+                error!("could not send command to stop: {}", e);
+            }
+        }
         self.cmd_tx = None;
         Ok(())
     }
