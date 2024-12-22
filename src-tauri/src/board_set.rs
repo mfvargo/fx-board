@@ -88,6 +88,7 @@ pub struct BoardSet {
     left_board: PedalBoard,
     pub event_channel: Channel<Value>,
     pub rx_cmd: Receiver<ParamMessage>,
+    pub running: bool,
 }
 
 impl BoardSet {
@@ -97,6 +98,17 @@ impl BoardSet {
             right_board: PedalBoard::new(1),
             event_channel: channel,
             rx_cmd: rx_cmd,
+            running: true,
+        }
+    }
+    pub fn process_command(&mut self, msg: ParamMessage) -> () {
+        match msg.param {
+            JamParam::ShutdownAudio => {
+                self.running = false;
+            }
+            _ => {
+                error!("received unknown command: {}", msg);
+            }
         }
     }
 }
@@ -129,18 +141,14 @@ fn alsa_thread_run(mut boardset: BoardSet, mut alsa_device: AlsaDevice) -> Resul
     let mut update_timer = MicroTimer::new(now, 150_000);
     
     let mut frame_count: usize = 1;
-    loop {
+    while boardset.running {
         // process a frame of audio
         alsa_device.process_a_frame(&mut boardset)?;
         now = get_micro_time();
         // check for any incoming commands
         if let Ok(msg) = boardset.rx_cmd.try_recv() {
             info!("got message: {}", msg);
-            return Ok(());
-            // if msg["cmd"].to_string() == String::from("exit") {
-            //     info!("exiting alsa thread");
-            //     return Ok(());
-            // }
+            boardset.process_command(msg);
         }
         // Send any updates, but don't do this every frame
         if update_timer.expired(now) {
@@ -153,5 +161,5 @@ fn alsa_thread_run(mut boardset: BoardSet, mut alsa_device: AlsaDevice) -> Resul
         }
         frame_count += 1;
     }
-    // Ok(())
+    Ok(())
 }
