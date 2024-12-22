@@ -4,12 +4,12 @@ use log::{debug, error, info};
 use pedal_board::PedalBoard;
 use tauri::ipc::Channel;
 use thread_priority::{ThreadBuilder, ThreadPriority};
-use crate::{alsa_device::{AlsaDevice, Callback}, box_error::BoxError, utils::{get_micro_time, MicroTimer}};
+use crate::{alsa_device::{AlsaDevice, Callback}, box_error::BoxError, param_message::{JamParam, ParamMessage}, utils::{get_micro_time, MicroTimer}};
 use serde_json::{json, Value};
 
 /// The BoardConnection will retain the channel to the alsa thread
 pub struct BoardConnection {
-    cmd_tx: Option<Sender<Value>>,
+    cmd_tx: Option<Sender<ParamMessage>>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -30,7 +30,7 @@ impl BoardConnection {
         }
 
         // Create a channel to talk to the audio thread
-        let (command_tx, command_rx): (mpsc::Sender<Value>, mpsc::Receiver<Value>) = mpsc::channel();
+        let (command_tx, command_rx): (mpsc::Sender<ParamMessage>, mpsc::Receiver<ParamMessage>) = mpsc::channel();
 
         self.cmd_tx = Some(command_tx);
         let boardset = BoardSet::new(channel, command_rx);
@@ -62,7 +62,9 @@ impl BoardConnection {
             error!("attempting double stop of audio");
             return Err("Double Stop".into());
         }
-        match self.send_command(json!({"cmd": "exit"})) {
+        match self.send_command(
+            ParamMessage::new(JamParam::ShutdownAudio, 0, 0, 0.0, "")
+        ) {
             Ok(()) => { () }
             Err(e) => {
                 error!("could not send command to stop: {}", e);
@@ -73,7 +75,7 @@ impl BoardConnection {
     }
 
     // This will send a command to the box thread
-    pub fn send_command(&mut self, msg: Value) -> Result<(), BoxError> {
+    pub fn send_command(&mut self, msg: ParamMessage) -> Result<(), BoxError> {
         if let Some(tx) = &self.cmd_tx {
             tx.send(msg)?;
         }
@@ -85,11 +87,11 @@ pub struct BoardSet {
     right_board: PedalBoard,
     left_board: PedalBoard,
     pub event_channel: Channel<Value>,
-    pub rx_cmd: Receiver<Value>,
+    pub rx_cmd: Receiver<ParamMessage>,
 }
 
 impl BoardSet {
-    pub fn new(channel: Channel<Value>, rx_cmd: Receiver<Value>) -> BoardSet {
+    pub fn new(channel: Channel<Value>, rx_cmd: Receiver<ParamMessage>) -> BoardSet {
         BoardSet {
             left_board: PedalBoard::new(0),
             right_board: PedalBoard::new(1),

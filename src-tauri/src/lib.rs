@@ -1,4 +1,8 @@
+#[macro_use]
+extern crate num_derive;
+
 use log::info;
+use param_message::ParamMessage;
 use serde_json::Value;
 use std::sync::Mutex;
 
@@ -8,6 +12,7 @@ mod alsa_device;
 mod box_error;
 mod board_set;
 mod utils;
+mod param_message;
 
 use board_set::BoardConnection;
 
@@ -42,10 +47,18 @@ fn stop(unit_state: State<'_, UnitState>) -> Result<(), String> {
 
 #[tauri::command]
 fn send_command(unit_state: State<'_, UnitState>, msg: Value) -> Result<(), String> {
+    info!("Sending command to board set {}", msg);
     let mut board_con = unit_state.0.lock().unwrap();
-    match board_con.send_command(msg) {
-        Ok(()) => { Ok(()) }
-        Err(e) => { Err(e.to_string()) }
+    match ParamMessage::from_json(&msg) {
+        Ok(param_message) => {
+            match board_con.send_command(param_message)  {
+                Ok(()) => { Ok(()) }
+                Err(e) => { Err(e.to_string()) }
+            }
+        }
+        Err(e) => {
+            Err(e.to_string())
+        }
     }
 }
 

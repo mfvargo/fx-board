@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke, Channel } from "@tauri-apps/api/core";
+import { RTJamParameters } from "./param_message";
 import "./App.css";
 
 function App() {
@@ -36,7 +37,9 @@ function App() {
   }
 
   async function stop_audio() {
-    setStatusMsg(await invoke("stop", {}));
+    setStatusMsg(await invoke("stop", {
+      param: RTJamParameters.paramShutdownAudio
+    }));
   }
 
   return (
