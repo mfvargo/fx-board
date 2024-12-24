@@ -22,6 +22,7 @@ impl BoardConnection {
     }
     // Gentlemen, start your engines..
     pub fn start(&mut self, channel: Channel<Value>, in_dev: String, out_dev: String) -> Result<(), BoxError> {
+        info!("starting audio: {}, {}", in_dev, out_dev);
         // Prevent double start
         if  self.cmd_tx.is_some() {
             // we have already been started
