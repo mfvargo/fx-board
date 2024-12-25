@@ -142,11 +142,6 @@ export class UnitHandler {
     this.dispatchers.unit.publish(this.updatedModel);
   }
 
-  setLevels(r: any) {
-    // console.log(this.updatedModel);
-    this.dispatchers.levels.publish(this.updatedModel);
-  }
-
   // Subsscription Functions
   subscribe(topic: "unit" | "levels" | "boards" | "midi", keyName: string, callbackFunc: any) {
     this.dispatchers[topic].subscribe(keyName, callbackFunc);
