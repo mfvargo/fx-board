@@ -49,7 +49,7 @@ impl ParamMessage {
             svalue: String::from(sval),
         }
     }
-    pub fn as_json(&self) -> serde_json::Value {
+    pub fn _as_json(&self) -> serde_json::Value {
         json!({
           "param": num::ToPrimitive::to_usize(&self.param),
           "iValue1": self.ivalue_1,
@@ -58,7 +58,7 @@ impl ParamMessage {
           "sValue": self.svalue,
         })
     }
-    pub fn from_string(data: &str) -> Result<ParamMessage, BoxError> {
+    pub fn _from_string(data: &str) -> Result<ParamMessage, BoxError> {
         let raw = serde_json::from_str(data)?;
         Self::from_json(&raw)
     }
