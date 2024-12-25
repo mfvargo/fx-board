@@ -41,6 +41,7 @@ export class UnitHandler {
 
 
   constructor() {
+    console.log("constructing unitHandler");
     this.lastHeardFrom = new Date();
     this.dispatchers = {
       unit: new EventDispatcher(),
@@ -52,8 +53,8 @@ export class UnitHandler {
       masterLevel: { level: -60, peak: -60 },
       inputLeft: { level: -60, peak: -60 },
       inputRight: { level: -60, peak: -60 },
-      roomLeft: { level: -60, peak: -60 },
-      roomRight: { level: -60, peak: -60 },
+      outputLeft: { level: -60, peak: -60 },
+      outputRight: { level: -60, peak: -60 },
       inputLeftFreq: 0.0,
       inputRightFreq: 0.0,
       leftTunerOn: false,
@@ -73,19 +74,33 @@ export class UnitHandler {
 
   processMessage(msg: any) {
     // Process a message from the rust side
-    console.log(msg);
+    if (msg.levelEvent) {
+      this.updatedModel.inputLeft = msg.levelEvent.inputLeft;
+      this.updatedModel.inputRight = msg.levelEvent.inputRight;
+      this.updatedModel.outputLeft = msg.levelEvent.outputLeft;
+      this.updatedModel.outputRight = msg.levelEvent.outputRight;
+      this.dispatchers.levels.publish(this.updatedModel);
+    }
+    if (msg.pedalTypes) {
+      console.log(msg);
+
+    }
+    if (msg.pedalInfo) {
+      console.log(msg);
+
+    }
   }
 
   apiFunction(msg: any) {
-    invoke("send_command", msg);
+    invoke("commandmsg", {msg: msg} );
   }
 
-  startAudio() {
+  async startAudio(callback_func: any) {
     console.log("starting audio");
     const ev = new Channel<string>;
-    ev.onmessage = this.processMessage;
+    ev.onmessage = callback_func;
     console.log(
-      invoke("start", {
+      await invoke("start", {
         onEvent: ev,
         inDev: "hw:CODEC",
         outDev: "hw:CODEC",

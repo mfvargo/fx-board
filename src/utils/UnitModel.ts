@@ -76,8 +76,8 @@ export interface UnitModel {
   masterLevel: Level;
   inputLeft: Level;
   inputRight: Level;
-  roomLeft: Level;
-  roomRight: Level;
+  outputLeft: Level;
+  outputRight: Level;
   inputLeftFreq: number;
   inputRightFreq: number;
   leftTunerOn: boolean;
