@@ -11,7 +11,9 @@ export default function BoardSet() {
     const { unitHandler } = useContext(HandlerContext);
     const [leftLevel, setLeftLevel] = useState(unitHandler.updatedModel.inputLeft);
     const [rightLevel, setRightLevel] = useState(unitHandler.updatedModel.inputRight);
-    const sliderOrientation = "horizontal"
+    const [outLeftLevel, setOutLeftLevel] = useState(unitHandler.updatedModel.outputLeft);
+    const [outRightLevel, setOutRightLevel] = useState(unitHandler.updatedModel.outputRight);
+    const sliderOrientation = "vertical"
   
     useEffect(() => {
       unitHandler.subscribe("levels", "fx-board-app",  distributeLevels);
@@ -29,6 +31,8 @@ export default function BoardSet() {
         setStatusMsg(`Levels: ${JSON.stringify(model)}`);
         setLeftLevel(model.inputLeft);
         setRightLevel(model.inputRight);
+        setOutLeftLevel(model.outputLeft);
+        setOutRightLevel(model.outputRight);
     }
     
     async function start_audio() {
@@ -65,7 +69,17 @@ export default function BoardSet() {
                 size={"16rem"}
             />
             <LevelMeter
+                signal={outLeftLevel}
+                orientation={sliderOrientation}
+                size={"16rem"}
+            />
+            <LevelMeter
                 signal={rightLevel}
+                orientation={sliderOrientation}
+                size={"16rem"}
+            />
+            <LevelMeter
+                signal={outRightLevel}
                 orientation={sliderOrientation}
                 size={"16rem"}
             />
