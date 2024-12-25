@@ -20,7 +20,7 @@ export default function BoardSet() {
     }
 
     async function distributeLevels(model: UnitModel) {
-        setStatusMsg(`Levels: ${model.inputLeft.level}`);
+        setStatusMsg(`Levels: ${JSON.stringify(model)}`);
     }
     
     async function start_audio() {

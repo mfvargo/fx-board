@@ -93,6 +93,7 @@ pub struct BoardSet {
     pub running: bool,
     input_meters: [PowerMeter; 2],
     output_meters: [PowerMeter; 2],
+    tuners: [Tuner; 2],
 }
 
 impl BoardSet {
@@ -102,6 +103,7 @@ impl BoardSet {
             right_board: PedalBoard::new(1),
             input_meters: [PowerMeter::new(), PowerMeter::new()],
             output_meters: [PowerMeter::new(), PowerMeter::new()],
+            tuners: [Tuner::new(), Tuner::new()],
             event_channel: channel,
             rx_cmd: rx_cmd,
             running: true,
@@ -125,7 +127,7 @@ impl BoardSet {
             }
         }
     }
-    pub fn levels(&self) -> Value {
+    pub fn levels(&mut self) -> Value {
         json!({
             "levelEvent" : {
                 "inputLeft": {
@@ -144,6 +146,8 @@ impl BoardSet {
                     "level": self.output_meters[1].get_avg(),
                     "peak": self.output_meters[1].get_peak(),
                 },
+                "leftFreq": self.tuners[0].get_note(),
+                "rightFreq": self.tuners[1].get_note(),
             }
         })
     }
@@ -168,6 +172,8 @@ impl Callback for BoardSet {
             out_a: &mut [f32], 
             out_b: &mut [f32]
     ) -> () {
+        self.tuners[0].add_samples(in_a);
+        self.tuners[1].add_samples(in_b);
         self.input_meters[0].add_frame(in_a, 1.0);
         self.input_meters[1].add_frame(in_b, 1.0);
         self.left_board.process(in_a, out_a);
@@ -203,7 +209,8 @@ fn alsa_thread_run(mut boardset: BoardSet, mut alsa_device: AlsaDevice) -> Resul
         if update_timer.expired(now) {
             update_timer.reset(now);
             debug!("sending update with frame_count: {}", frame_count);
-            boardset.event_channel.send(boardset.levels())?;
+            let levels = boardset.levels();
+            boardset.event_channel.send(levels)?;
         }
         frame_count += 1;
     }
