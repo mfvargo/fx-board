@@ -2,6 +2,8 @@ import { useContext, useEffect, useState } from "react";
 import { HandlerContext } from "../utils/HandlerContext";
 import { UnitModel } from "../utils/UnitModel";
 import LevelMeter from "./LevelMeter/LevelMeter";
+import Guitar from "../assets/guitar.json";
+import Vocals from "../assets/vocals.json"
 
 export default function BoardSet() {
 
@@ -32,6 +34,12 @@ export default function BoardSet() {
     async function start_audio() {
         await unitHandler.startAudio(callback);
     }
+
+    async function load_board() {
+        await unitHandler.loadBoardFromConfig(0, Vocals);
+        await unitHandler.loadBoardFromConfig(1, Guitar);
+        await unitHandler.refreshPedalConfig();
+    }
     
     async function stop_audio() {
         await unitHandler.stopAudio();
@@ -49,8 +57,8 @@ export default function BoardSet() {
             <button type="button" onClick={start_audio}>Start</button>
             <button type="button" onClick={stop_audio}>Stop</button>
             <button type="button" onClick={retrieve_boards}>Retrieve</button>
+            <button type="button" onClick={load_board}>Guitar</button>
             </p>
-            <p>{statusMsg}</p>
             <LevelMeter
                 signal={leftLevel}
                 orientation={sliderOrientation}
@@ -61,6 +69,7 @@ export default function BoardSet() {
                 orientation={sliderOrientation}
                 size={"16rem"}
             />
+            <p>{statusMsg}</p>
 
         </div>
     )

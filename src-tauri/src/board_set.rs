@@ -122,6 +122,18 @@ impl BoardSet {
                     }
                 }
             }
+            JamParam::LoadBoard => {
+                if msg.ivalue_1 == 0 {
+                    let mut board = PedalBoard::new(0);
+                    board.load_from_json(&msg.svalue);
+                    self.left_board = board;
+                }
+                if msg.ivalue_1 == 1 {
+                    let mut board = PedalBoard::new(1);
+                    board.load_from_json(&msg.svalue);
+                    self.right_board = board;
+                }
+            }
             _ => {
                 error!("received unknown command: {}", msg);
             }

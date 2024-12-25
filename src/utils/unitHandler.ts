@@ -82,12 +82,20 @@ export class UnitHandler {
       this.dispatchers.levels.publish(this.updatedModel);
     }
     if (msg.pedalTypes) {
-      console.log(msg);
-
+      const pedalOptions = [];
+      for (const key in msg.pedalTypes) {
+        pedalOptions.push({ value: key, label: msg.pedalTypes[key] });
+      }
+      this.setPedalTypes(pedalOptions);
     }
     if (msg.pedalInfo) {
-      console.log(msg);
-
+      const rval = msg.pedalInfo;
+      if (Array.isArray(rval) && rval.length === 2 && rval[0].effects && rval[1].effects) {
+        this.setLoadedBoards([
+          { channel: 0, boardId: rval[0].boardId, pedals: rval[0].effects },
+          { channel: 1, boardId: rval[1].boardId, pedals: rval[1].effects },
+        ]);
+      }
     }
   }
 
