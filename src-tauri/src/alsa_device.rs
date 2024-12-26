@@ -19,20 +19,20 @@ pub trait Callback {
 type SF = i16;
 pub const FRAME_SIZE: usize = 128;
 const SAMPLE_RATE: u32 = 48_000;
-const CHANNELS: u32 = 2;
+pub const CHANNELS: usize = 2;
 const MAX_SAMPLE: f32 = 32766.0;
 const SMP_FORMAT: Format = Format::s16();
 
 struct OutputBuffer {
     pos: usize,
-    buf: [SF; FRAME_SIZE * CHANNELS as usize],
+    buf: [SF; FRAME_SIZE * CHANNELS],
 }
 
 impl OutputBuffer {
     pub fn new() -> OutputBuffer {
         OutputBuffer {
             pos: 0,
-            buf: [0; FRAME_SIZE * CHANNELS as usize]
+            buf: [0; FRAME_SIZE * CHANNELS]
         }
     }
     pub fn load_data(&mut self, out_a: &[f32], out_b: &[f32]) -> () {
@@ -51,7 +51,7 @@ impl Iterator for OutputBuffer {
     type Item = SF;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.pos >= FRAME_SIZE * CHANNELS as usize {
+        if self.pos >= FRAME_SIZE * CHANNELS  {
             return None;
         }
         let val = self.buf[self.pos];
@@ -93,7 +93,7 @@ impl AlsaDevice{
     pub fn process_a_frame(&mut self, cb: &mut dyn Callback) -> Result<usize, BoxError> {
         let mut io_out = self.out_dev.io_i16()?;
         let io_in = self.in_dev.io_i16()?;
-        let mut in_buf = [0; FRAME_SIZE * CHANNELS as usize];
+        let mut in_buf = [0; FRAME_SIZE * CHANNELS];
     
         // Read in a frame
         match io_in.readi(&mut in_buf) {
@@ -169,7 +169,7 @@ fn open_record_dev(device: &str) -> Result<PCM, BoxError> {
     let pcm = PCM::new(device, Direction::Capture, false)?;
     {
         let hwp = HwParams::any(&pcm)?;
-        hwp.set_channels(CHANNELS)?;
+        hwp.set_channels(CHANNELS as u32)?;
         hwp.set_rate(SAMPLE_RATE, ValueOr::Nearest)?;
         hwp.set_format(SMP_FORMAT)?;
         hwp.set_access(Access::RWInterleaved)?;
@@ -190,7 +190,7 @@ fn open_playback_dev(device: &str) -> Result<PCM, BoxError> {
     // Set hardware parameters
     {
         let hwp = HwParams::any(&p)?;
-        hwp.set_channels(CHANNELS)?;
+        hwp.set_channels(CHANNELS as u32)?;
         hwp.set_rate(SAMPLE_RATE, alsa::ValueOr::Nearest)?;
         hwp.set_format(SMP_FORMAT)?;
         hwp.set_access(Access::MMapInterleaved)?;

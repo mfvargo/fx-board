@@ -1,11 +1,11 @@
-use std::{sync::mpsc::{self, Receiver, Sender}, thread::JoinHandle};
+use std::{str::FromStr, sync::mpsc::{self, Receiver, Sender}, thread::JoinHandle};
 
 use log::{debug, error, info};
 use pedal_board::PedalBoard;
 use pedal_board::dsp::{power_meter::PowerMeter, tuner::Tuner};
 use tauri::ipc::Channel;
 use thread_priority::{ThreadBuilder, ThreadPriority};
-use crate::{alsa_device::{AlsaDevice, Callback}, box_error::BoxError, param_message::{JamParam, ParamMessage}, utils::{get_micro_time, MicroTimer}};
+use crate::{alsa_device::{AlsaDevice, Callback, CHANNELS}, box_error::BoxError, param_message::{JamParam, ParamMessage}, utils::{get_micro_time, MicroTimer}};
 use serde_json::{json, Value};
 
 /// The BoardConnection will retain the channel to the alsa thread
@@ -86,21 +86,19 @@ impl BoardConnection {
 }
 
 pub struct BoardSet {
-    right_board: PedalBoard,
-    left_board: PedalBoard,
+    boards: [PedalBoard; CHANNELS],
     pub event_channel: Channel<Value>,
     pub rx_cmd: Receiver<ParamMessage>,
     pub running: bool,
-    input_meters: [PowerMeter; 2],
-    output_meters: [PowerMeter; 2],
+    input_meters: [PowerMeter; CHANNELS],
+    output_meters: [PowerMeter; CHANNELS],
     tuners: [Tuner; 2],
 }
 
 impl BoardSet {
     pub fn new(channel: Channel<Value>, rx_cmd: Receiver<ParamMessage>) -> BoardSet {
         BoardSet {
-            left_board: PedalBoard::new(0),
-            right_board: PedalBoard::new(1),
+            boards: [PedalBoard::new(0), PedalBoard::new(1)],
             input_meters: [PowerMeter::new(), PowerMeter::new()],
             output_meters: [PowerMeter::new(), PowerMeter::new()],
             tuners: [Tuner::new(), Tuner::new()],
@@ -123,22 +121,51 @@ impl BoardSet {
                 }
             }
             JamParam::LoadBoard => {
-                if msg.ivalue_1 == 0 {
-                    let mut board = PedalBoard::new(0);
-                    board.load_from_json(&msg.svalue);
-                    self.left_board = board;
-                }
-                if msg.ivalue_1 == 1 {
-                    let mut board = PedalBoard::new(1);
-                    board.load_from_json(&msg.svalue);
-                    self.right_board = board;
+                let idx = msg.ivalue_1 as usize;
+                if idx < CHANNELS {
+                    self.boards[idx] = PedalBoard::new(idx);
+                    self.boards[idx].load_from_json(&msg.svalue);
                 }
             }
-            _ => {
-                error!("received unknown command: {}", msg);
+            JamParam::InsertPedal => {
+                let idx = msg.ivalue_1 as usize;
+                if idx < CHANNELS {
+                    self.boards[idx].insert_pedal(&msg.svalue, msg.ivalue_2 as usize);
+                }
+            }
+            JamParam::DeletePedal => {
+                let idx = msg.ivalue_1 as usize;
+                if idx < CHANNELS {
+                    self.boards[idx].delete_pedal(msg.ivalue_2 as usize);
+                }
+            }
+            JamParam::MovePedal => {
+                let idx = msg.ivalue_1 as usize;
+                if idx < CHANNELS {
+                    let from_idx: usize = msg.ivalue_2 as usize;
+                    let to_idx: usize = msg.fvalue.round() as usize;
+                    self.boards[idx].move_pedal(from_idx, to_idx);
+                }
+            }
+            JamParam::SetEffectConfig => {
+                let idx = msg.ivalue_1 as usize;
+                if idx < CHANNELS {
+                    match serde_json::Value::from_str(&msg.svalue) {
+                        Ok(setting) => {
+                            self.boards[idx].change_value(msg.ivalue_2 as usize, &setting);
+                        }
+                        Err(e) => {
+                            // error parsing json to modify a setting
+                            dbg!(e);
+                        }
+                    }
+
+                    self.boards[idx].load_from_json(&msg.svalue);
+                }
             }
         }
     }
+
     pub fn levels(&mut self) -> Value {
         json!({
             "levelEvent" : {
@@ -167,8 +194,8 @@ impl BoardSet {
         json!({
             "pedalTypes": PedalBoard::get_pedal_types(),
             "pedalInfo": [
-                self.left_board.as_json(0),
-                self.right_board.as_json(1),
+                self.boards[0].as_json(0),
+                self.boards[1].as_json(1),
             ]
         })
     }
@@ -188,8 +215,8 @@ impl Callback for BoardSet {
         self.tuners[1].add_samples(in_b);
         self.input_meters[0].add_frame(in_a, 1.0);
         self.input_meters[1].add_frame(in_b, 1.0);
-        self.left_board.process(in_a, out_a);
-        self.right_board.process(in_b, out_b);
+        self.boards[0].process(in_a, out_a);
+        self.boards[1].process(in_b, out_b);
         self.output_meters[0].add_frame(out_a, 1.0);    
         self.output_meters[1].add_frame(out_b, 1.0);    
         // make it stereo

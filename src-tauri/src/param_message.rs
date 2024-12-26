@@ -15,7 +15,6 @@ pub enum JamParam {
     DeletePedal,
     MovePedal,
     LoadBoard,
-    TuneChannel,
     ShutdownAudio = 9999,
 }
 
@@ -142,7 +141,7 @@ mod test_param_message {
             "fValue": 2.0,
             "sValue": "John Doe"
         }"#;
-        let msg = ParamMessage::from_string(data).unwrap();
+        let msg = ParamMessage::_from_string(data).unwrap();
         assert_eq!(msg.ivalue_2, 100);
     }
     #[test]

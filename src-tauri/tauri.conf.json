@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "fx-board",
-        "width": 800,
-        "height": 600
+        "title": "pedals",
+        "width": 720,
+        "height": 1280,
+        "x": 100,
+        "y": 200
       }
     ],
     "security": {
