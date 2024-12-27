@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import tsconfigPaths from 'vite-tsconfig-paths'
 import react from "@vitejs/plugin-react";
 
 // @ts-expect-error process is a nodejs global
@@ -6,7 +7,7 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react()],
+  plugins: [react(), tsconfigPaths()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -27,6 +28,13 @@ export default defineConfig(async () => ({
     watch: {
       // 3. tell vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
+    },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          includePaths: ['node_modules'],
+        },
+      },
     },
   },
 }));

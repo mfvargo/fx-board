@@ -110,8 +110,8 @@ export class UnitHandler {
     console.log(
       await invoke("start", {
         onEvent: ev,
-        inDev: "hw:PCH",
-        outDev: "hw:PCH",
+        inDev: "hw:CODEC",
+        outDev: "hw:CODEC",
       })
     );
   }
