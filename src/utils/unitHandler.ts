@@ -6,7 +6,7 @@
 /// to effect changes on rust side.
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { EventDispatcher } from "./eventDispatcher";
-import { BoardData, PedalOption, UnitModel } from "./UnitModel";
+import { BoardData, PedalOption, UnitModel } from "../models/UnitModel";
 
 export enum RTJamParameters {
     paramGetConfigJson = 27,

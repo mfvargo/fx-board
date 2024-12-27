@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
-import { HandlerContext } from "../utils/HandlerContext";
-import { UnitModel } from "../utils/UnitModel";
+import { HandlerContext } from "../contexts/HandlerContext";
+import { UnitModel } from "../models/UnitModel";
 import LevelMeter from "./LevelMeter/LevelMeter";
 import Guitar from "../assets/guitar.json";
 import Vocals from "../assets/vocals.json"

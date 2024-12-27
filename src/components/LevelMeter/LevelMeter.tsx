@@ -1,4 +1,4 @@
-import { Level } from "../../utils/UnitModel";
+import { Level } from "../../models/UnitModel";
 import { min, max, maxWidth, signalToColor } from "../../utils/setSignalToColor";
 
 type RemString = `${number}rem`;

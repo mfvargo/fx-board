@@ -1,5 +1,5 @@
 import "./App.css";
-import { HandlerContextProvider } from "./utils/HandlerContext";
+import { HandlerContextProvider } from "./contexts/HandlerContext";
 import BoardSet from "./components/BoardSet";
 
 function App() {
