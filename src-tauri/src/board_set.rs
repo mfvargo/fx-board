@@ -5,7 +5,7 @@ use pedal_board::PedalBoard;
 use pedal_board::dsp::{power_meter::PowerMeter, tuner::Tuner};
 use tauri::ipc::Channel;
 use thread_priority::{ThreadBuilder, ThreadPriority};
-use crate::{alsa_device::{AlsaDevice, Callback, CHANNELS}, box_error::BoxError, param_message::{JamParam, ParamMessage}, utils::{get_micro_time, MicroTimer}};
+use crate::{alsa_thread::{self, SoundCallback, CHANNELS, FRAME_SIZE}, box_error::BoxError, param_message::{JamParam, ParamMessage}, utils::{get_micro_time, MicroTimer}};
 use serde_json::{json, Value};
 
 /// The BoardConnection will retain the channel to the alsa thread
@@ -35,16 +35,13 @@ impl BoardConnection {
         let (command_tx, command_rx): (mpsc::Sender<ParamMessage>, mpsc::Receiver<ParamMessage>) = mpsc::channel();
 
         self.cmd_tx = Some(command_tx);
-        let boardset = BoardSet::new(channel, command_rx);
-
-        let alsa_device = AlsaDevice::new(&in_dev, &out_dev)?;
 
         let builder = ThreadBuilder::default()
             .name("Real-Time Thread".to_string())
             .priority(ThreadPriority::Max);
 
         let alsa_handle = builder.spawn(move |_result| {
-            match alsa_thread_run(boardset, alsa_device) {
+            match alsa_thread::run(&mut BoardSet::new(channel, command_rx), &in_dev, &out_dev) {
                 Ok(()) => {
                     info!("alsa ended with OK");
                 }
@@ -92,7 +89,10 @@ pub struct BoardSet {
     pub running: bool,
     input_meters: [PowerMeter; CHANNELS],
     output_meters: [PowerMeter; CHANNELS],
+    output_buffers: [Vec<f32>; 2],
     tuners: [Tuner; 2],
+    update_timer: MicroTimer,
+    frame_count: usize,
 }
 
 impl BoardSet {
@@ -101,66 +101,72 @@ impl BoardSet {
             boards: [PedalBoard::new(0), PedalBoard::new(1)],
             input_meters: [PowerMeter::new(), PowerMeter::new()],
             output_meters: [PowerMeter::new(), PowerMeter::new()],
+            output_buffers: [vec!(0.0; FRAME_SIZE), vec!(0.0; FRAME_SIZE)],
             tuners: [Tuner::new(), Tuner::new()],
             event_channel: channel,
             rx_cmd: rx_cmd,
             running: true,
+            update_timer: MicroTimer::new(get_micro_time(), 150_000),
+            frame_count: 0,
         }
     }
-    pub fn process_command(&mut self, msg: ParamMessage) -> () {
-        match msg.param {
-            JamParam::ShutdownAudio => {
-                self.running = false;
-            }
-            JamParam::GetConfigJson => {
-                match self.event_channel.send(self.board_config()) {
-                    Ok(()) => {}
-                    Err(e) => {
-                        error!("Error retrieving board config: {}", e);
-                    }
+    fn process_command(&mut self) -> () {
+        if let Ok(msg) = self.rx_cmd.try_recv() {
+            info!("got message: {}", msg);
+            match msg.param {
+                JamParam::ShutdownAudio => {
+                    self.running = false;
                 }
-            }
-            JamParam::LoadBoard => {
-                let idx = msg.ivalue_1 as usize;
-                if idx < CHANNELS {
-                    self.boards[idx] = PedalBoard::new(idx);
-                    self.boards[idx].load_from_json(&msg.svalue);
-                }
-            }
-            JamParam::InsertPedal => {
-                let idx = msg.ivalue_1 as usize;
-                if idx < CHANNELS {
-                    self.boards[idx].insert_pedal(&msg.svalue, msg.ivalue_2 as usize);
-                }
-            }
-            JamParam::DeletePedal => {
-                let idx = msg.ivalue_1 as usize;
-                if idx < CHANNELS {
-                    self.boards[idx].delete_pedal(msg.ivalue_2 as usize);
-                }
-            }
-            JamParam::MovePedal => {
-                let idx = msg.ivalue_1 as usize;
-                if idx < CHANNELS {
-                    let from_idx: usize = msg.ivalue_2 as usize;
-                    let to_idx: usize = msg.fvalue.round() as usize;
-                    self.boards[idx].move_pedal(from_idx, to_idx);
-                }
-            }
-            JamParam::SetEffectConfig => {
-                let idx = msg.ivalue_1 as usize;
-                if idx < CHANNELS {
-                    match serde_json::Value::from_str(&msg.svalue) {
-                        Ok(setting) => {
-                            self.boards[idx].change_value(msg.ivalue_2 as usize, &setting);
-                        }
+                JamParam::GetConfigJson => {
+                    match self.event_channel.send(self.board_config()) {
+                        Ok(()) => {}
                         Err(e) => {
-                            // error parsing json to modify a setting
-                            dbg!(e);
+                            error!("Error retrieving board config: {}", e);
                         }
                     }
+                }
+                JamParam::LoadBoard => {
+                    let idx = msg.ivalue_1 as usize;
+                    if idx < CHANNELS {
+                        self.boards[idx] = PedalBoard::new(idx);
+                        self.boards[idx].load_from_json(&msg.svalue);
+                    }
+                }
+                JamParam::InsertPedal => {
+                    let idx = msg.ivalue_1 as usize;
+                    if idx < CHANNELS {
+                        self.boards[idx].insert_pedal(&msg.svalue, msg.ivalue_2 as usize);
+                    }
+                }
+                JamParam::DeletePedal => {
+                    let idx = msg.ivalue_1 as usize;
+                    if idx < CHANNELS {
+                        self.boards[idx].delete_pedal(msg.ivalue_2 as usize);
+                    }
+                }
+                JamParam::MovePedal => {
+                    let idx = msg.ivalue_1 as usize;
+                    if idx < CHANNELS {
+                        let from_idx: usize = msg.ivalue_2 as usize;
+                        let to_idx: usize = msg.fvalue.round() as usize;
+                        self.boards[idx].move_pedal(from_idx, to_idx);
+                    }
+                }
+                JamParam::SetEffectConfig => {
+                    let idx = msg.ivalue_1 as usize;
+                    if idx < CHANNELS {
+                        match serde_json::Value::from_str(&msg.svalue) {
+                            Ok(setting) => {
+                                self.boards[idx].change_value(msg.ivalue_2 as usize, &setting);
+                            }
+                            Err(e) => {
+                                // error parsing json to modify a setting
+                                dbg!(e);
+                            }
+                        }
 
-                    self.boards[idx].load_from_json(&msg.svalue);
+                        self.boards[idx].load_from_json(&msg.svalue);
+                    }
                 }
             }
         }
@@ -204,54 +210,47 @@ impl BoardSet {
 // By implementing the Callback trait (defined in alsa_device) this structure can
 // be passed into the process_a_frame function on the alsa device.  The alsa device will
 // call the function named "call" with a frame of audio samples.
-impl Callback for BoardSet {
-    fn call(&mut self, 
-            in_a: &[f32], 
-            in_b: &[f32], 
-            out_a: &mut [f32], 
-            out_b: &mut [f32]
-    ) -> () {
+impl SoundCallback for BoardSet {
+    fn process_inputs(&mut self, in_a: &[f32], in_b: &[f32]) -> () {
+        // count frames
+        self.frame_count += 1;
+        // Check for any commands
+        self.process_command();
+        // Push a frame of data into the system
         self.tuners[0].add_samples(in_a);
         self.tuners[1].add_samples(in_b);
         self.input_meters[0].add_frame(in_a, 1.0);
         self.input_meters[1].add_frame(in_b, 1.0);
-        self.boards[0].process(in_a, out_a);
-        self.boards[1].process(in_b, out_b);
-        self.output_meters[0].add_frame(out_a, 1.0);    
-        self.output_meters[1].add_frame(out_b, 1.0);    
-        // make it stereo
-        for (i, _v) in in_a.iter().enumerate() {
-            let left = out_a[i];
-            out_a[i] += out_b[i];
-            out_b[i] += left;
+        self.boards[0].process(in_a, &mut self.output_buffers[0]);
+        self.boards[1].process(in_b, &mut self.output_buffers[1]);
+        self.output_meters[0].add_frame(&self.output_buffers[0], 1.0);    
+        self.output_meters[1].add_frame(&self.output_buffers[1], 1.0);
+        // Check if we need to send a latency update
+        let now = get_micro_time();
+        if self.update_timer.expired(now) {
+            self.update_timer.reset(now);
+            debug!("sending update with frame_count: {}", self.frame_count);
+            let levels = self.levels();
+            match self.event_channel.send(levels) {
+                Ok(()) => {}
+                Err(e) => {
+                    error!("failed to send update: {}", e);
+                }
+            }
         }
-    }
-}
 
-fn alsa_thread_run(mut boardset: BoardSet, mut alsa_device: AlsaDevice) -> Result<(), BoxError> {
-    // If we got here, we just loop and process
-    info!("inside alsa_thread_run");
-    let mut now = get_micro_time();
-    let mut update_timer = MicroTimer::new(now, 150_000);
-    
-    let mut frame_count: usize = 1;
-    while boardset.running {
-        // process a frame of audio
-        alsa_device.process_a_frame(&mut boardset)?;
-        now = get_micro_time();
-        // check for any incoming commands
-        if let Ok(msg) = boardset.rx_cmd.try_recv() {
-            info!("got message: {}", msg);
-            boardset.process_command(msg);
-        }
-        // Send any updates, but don't do this every frame
-        if update_timer.expired(now) {
-            update_timer.reset(now);
-            debug!("sending update with frame_count: {}", frame_count);
-            let levels = boardset.levels();
-            boardset.event_channel.send(levels)?;
-        }
-        frame_count += 1;
     }
-    Ok(())
+    fn get_playback_data(&mut self, out_a: &mut [f32], out_b: &mut [f32]) -> () {
+        let mut i: usize = 0;
+        while i < FRAME_SIZE {
+            out_a[i] = self.output_buffers[0][i] + self.output_buffers[1][i];
+            out_b[i] = self.output_buffers[0][i] + self.output_buffers[1][i];
+            i += 1;
+        }
+    }
+
+    /// This will let you know if the engine is still running
+    fn is_running(&self) -> bool {
+        self.running
+    }
 }

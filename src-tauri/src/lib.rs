@@ -8,7 +8,7 @@ use std::sync::Mutex;
 
 use tauri::{ipc::Channel, State};
 
-mod alsa_device;
+mod alsa_thread;
 mod box_error;
 mod board_set;
 mod utils;
