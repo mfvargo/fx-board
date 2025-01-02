@@ -1,0 +1,105 @@
+@use "variables" as *;
+
+@mixin transform-translate($x, $y) {
+  transform: translate($x, $y);
+  -webkit-transform: translate($x, $y);
+}
+
+@mixin transform-rotate($xDeg) {
+  transform: rotate($xDeg);
+  -webkit-transform: rotate($xDeg);
+}
+
+@mixin respond($breakpoint) {
+  @if $breakpoint == phone {
+    @media only screen and (max-width: 37.5em) {
+      @content;
+    }
+  } @else if $breakpoint == medium {
+    @media only screen and (min-width: 37.51em) {
+      @content;
+    }
+  }
+}
+
+@mixin mixer-board-panel(
+  $bg-color: #e1e0e0,
+  $radius: 9px,
+  $box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2),
+  $hover-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2)
+) {
+  background-color: $bg-color;
+  border-radius: $radius;
+  box-shadow: $box-shadow;
+  height: 36rem;
+  max-width: 35rem;
+  transition: box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: $hover-shadow;
+  }
+
+  :global(.rangeslider-vertical) {
+    :global(.rangeslider__labels) {
+      left: -10px;
+    }
+  }
+
+  :global(.rangeslider-horizontal) {
+    :global(.rangeslider__label-item) {
+      &:before {
+        background-color: $color-black;
+        content: "";
+        height: 10px;
+        left: 50%;
+        position: absolute;
+        top: -10px;
+        transform: translateX(-50%);
+        width: 2px;
+        z-index: -1;
+      }
+    }
+  }
+
+  @media (orientation: portrait) {
+    width: 95%;
+  }
+}
+
+@mixin knob-styles($size: 50px, $margin: 2rem 1rem) {
+  background: linear-gradient(
+    315deg,
+    lighten($color-off-black, 2.5%) 10%,
+    darken($color-off-black, 10%) 40.8%,
+    $color-off-black 42%,
+    $color-off-black 58%,
+    lighten($color-off-black, 13%) 59.2%,
+    lighten($color-off-black, 2.5%) 90%
+  );
+  border-radius: 50%;
+  height: $size;
+  margin: $margin;
+  position: relative;
+  width: $size;
+
+  .knobLine {
+    background: $color-white;
+    height: 50%;
+    left: 48.75%;
+    position: absolute;
+    top: 0%;
+    transform: rotate(225deg);
+    transform-origin: 50% 100%;
+    width: 2.5%;
+  }
+}
+
+@mixin knob-label() {
+  font-size: 9px;
+  font-weight: bold;
+  position: absolute;
+  text-transform: uppercase;
+  z-index: 99;
+
+  @include transform-translate(0, -40px);
+}
