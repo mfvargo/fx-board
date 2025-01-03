@@ -29,6 +29,11 @@ export interface BoardData {
   pedals: Array<PedalData>;
 }
 
+// Data representing a saved Board
+export interface SavedBoard extends BoardData {
+  name: string;
+}
+
 // This is the pedal boards loaded.  It's an array (by channel) of BoardData
 export type LoadedBoards = Array<BoardData>;
 
