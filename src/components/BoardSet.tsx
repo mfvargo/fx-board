@@ -8,7 +8,7 @@ import Vocals from "../assets/vocals.json"
 export default function BoardSet() {
 
     const [statusMsg, setStatusMsg] = useState("");
-    const { unitHandler } = useContext(HandlerContext);
+    const { unitHandler, boardStorage } = useContext(HandlerContext);
     const [leftLevel, setLeftLevel] = useState(unitHandler.updatedModel.inputLeft);
     const [rightLevel, setRightLevel] = useState(unitHandler.updatedModel.inputRight);
     const [outLeftLevel, setOutLeftLevel] = useState(unitHandler.updatedModel.outputLeft);
@@ -64,8 +64,14 @@ export default function BoardSet() {
 //     setEditMode(false);
 //   }
 
-//   async function savePedalsForLater(_bCreate: boolean, _opts: any) {
-//   }
+    async function savePedalsForLater() {
+        await boardStorage.setItem(
+            { ...unitHandler.updatedModel.boardInfo.loadedBoards[0], name: "lefty" }
+        );
+        await boardStorage.setItem(
+            { ...unitHandler.updatedModel.boardInfo.loadedBoards[0], name: "righty" }
+        );
+    }
    
     return (
         <div>
@@ -75,6 +81,7 @@ export default function BoardSet() {
             <button type="button" onClick={stop_audio}>Stop</button>
             <button type="button" onClick={retrieve_boards}>Retrieve</button>
             <button type="button" onClick={load_board}>Guitar</button>
+            <button type="button" onClick={savePedalsForLater}>Save</button>
             </p>
             <LevelMeter
                 signal={leftLevel}

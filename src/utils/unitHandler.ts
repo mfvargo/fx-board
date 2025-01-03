@@ -38,6 +38,7 @@ export class UnitHandler {
   // event dispatchers organized by topic
   dispatchers: Dispatchers;
   updatedModel: UnitModel;
+  private static instance: UnitHandler;
 
 
   constructor() {
@@ -71,6 +72,11 @@ export class UnitHandler {
       audioHardware: null,
     };
   }
+
+  public static getInstance(): UnitHandler {
+    return this.instance ?? (this.instance = new UnitHandler());
+  }
+
 
   processMessage(msg: any) {
     // Process a message from the rust side
