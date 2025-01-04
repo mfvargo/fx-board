@@ -12,8 +12,7 @@ export interface EffectSetting {
   min: number;
   step: number;
   type: number;
-  units: number;
-  value: number;
+  value: number | boolean;
 }
 // Data to represent a single pedal
 export interface PedalData {

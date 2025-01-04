@@ -1,9 +1,8 @@
 import { useContext, useEffect, useState } from "react";
 import { HandlerContext } from "../contexts/HandlerContext";
-import { UnitModel } from "../models/UnitModel";
+import { SavedBoard, UnitModel } from "../models/UnitModel";
 import LevelMeter from "./LevelMeter/LevelMeter";
-import Guitar from "../assets/guitar.json";
-import Vocals from "../assets/vocals.json"
+import DefaultBoards from "../assets/defaultBoards.json";
 
 export default function BoardSet() {
 
@@ -46,8 +45,6 @@ export default function BoardSet() {
     }
 
     async function load_board() {
-        await unitHandler.loadBoardFromConfig(0, Vocals);
-        await unitHandler.loadBoardFromConfig(1, Guitar);
         await unitHandler.refreshPedalConfig();
     }
     
@@ -63,6 +60,24 @@ export default function BoardSet() {
 //   async function loadBoard(_boardId: number) {
 //     setEditMode(false);
 //   }
+
+    async function saveDefaultBoards() {
+        // boardStorage.clearItems();
+        DefaultBoards.map((b) => {
+            var bd: SavedBoard = {
+                boardId: b.id,
+                name: b.name,
+                channel: 0,
+                pedals: b.config,
+            };
+            boardStorage.setItem(bd);
+        })
+        // for (const b in DefaultBoards) {
+        //     console.log(b);
+        //     // boardStorage.setItem(b);
+        // }
+    }
+
 
     async function savePedalsForLater() {
         await boardStorage.setItem(
@@ -82,6 +97,7 @@ export default function BoardSet() {
             <button type="button" onClick={retrieve_boards}>Retrieve</button>
             <button type="button" onClick={load_board}>Guitar</button>
             <button type="button" onClick={savePedalsForLater}>Save</button>
+            <button type="button" onClick={saveDefaultBoards}>Save default Boards</button>
             </p>
             <LevelMeter
                 signal={leftLevel}
