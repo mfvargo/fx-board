@@ -29,7 +29,7 @@ export default function BoardSet() {
 
 	useEffect(() => {
 		var storedBoards = boardStorage.getItems();
-		if (!storedBoards) {
+		if (storedBoards.length == 0) {
 			// If not, use DefaultBoards and store
 			DefaultBoards.map((b) => {
 				var bd: SavedBoard = {
