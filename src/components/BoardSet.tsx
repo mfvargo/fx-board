@@ -20,7 +20,7 @@ export default function BoardSet() {
 	const [outRightLevel, setOutRightLevel] = useState(
 		unitHandler.updatedModel.outputRight
 	);
-	const [boards, setBoards] = useState([]);
+	const [boards, setBoards] = useState<SavedBoard[]>([]);
 	const sliderOrientation = 'vertical';
 	//     const board = unitHandler.updatedModel.boardInfo.loadedBoards[0];
 	//     const pedalOptions = unitHandler.updatedModel.boardInfo.pedalOptions;
@@ -28,25 +28,22 @@ export default function BoardSet() {
 	//     const [boardName, setBoardName] = useState<string>("New Board");
 
 	useEffect(() => {
-		// Check if boards are already in localStorage
-		const storedBoards = localStorage.getItem('boards');
-
-		if (storedBoards) {
-			// If found, use it to initialize the state
-			setBoards(JSON.parse(storedBoards));
-		} else {
-			// If not, use DefaultBoards and store in localStorage
-			setBoards(DefaultBoards);
-			localStorage.setItem('boards', JSON.stringify(DefaultBoards));
+		var storedBoards = boardStorage.getItems();
+		if (!storedBoards) {
+			// If not, use DefaultBoards and store
+			DefaultBoards.map((b) => {
+				var bd: SavedBoard = {
+					boardId: b.id,
+					name: b.name,
+					channel: 0,
+					pedals: b.config,
+				};
+				boardStorage.setItem(bd);
+			});
 		}
+		storedBoards = boardStorage.getItems();
+		setBoards(storedBoards);
 	}, []);
-
-	useEffect(() => {
-		// whenever boards change, store them in localStorage
-		if (boards.length > 0) {
-			localStorage.setItem('boards', JSON.stringify(boards));
-		}
-	}, [boards]);
 
 	useEffect(() => {
 		unitHandler.subscribe('levels', 'fx-board-app', distributeLevels);
@@ -88,23 +85,6 @@ export default function BoardSet() {
 	//     setEditMode(false);
 	//   }
 
-	async function saveDefaultBoards() {
-		// boardStorage.clearItems();
-		DefaultBoards.map((b) => {
-			var bd: SavedBoard = {
-				boardId: b.id,
-				name: b.name,
-				channel: 0,
-				pedals: b.config,
-			};
-			boardStorage.setItem(bd);
-		});
-		// for (const b in DefaultBoards) {
-		//     console.log(b);
-		//     // boardStorage.setItem(b);
-		// }
-	}
-
 	async function savePedalsForLater() {
 		await boardStorage.setItem({
 			...unitHandler.updatedModel.boardInfo.loadedBoards[0],
@@ -134,9 +114,6 @@ export default function BoardSet() {
 				</button>
 				<button type="button" onClick={savePedalsForLater}>
 					Save
-				</button>
-				<button type="button" onClick={saveDefaultBoards}>
-					Save default Boards
 				</button>
 			</p>
 			<LevelMeter

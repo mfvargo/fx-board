@@ -1,5 +1,7 @@
+import { SavedBoard } from "@/models/UnitModel";
+
 interface BoardListProps {
-	boards: any;
+	boards: SavedBoard[];
 }
 
 export default function BoardList({ boards }: BoardListProps) {
@@ -7,8 +9,8 @@ export default function BoardList({ boards }: BoardListProps) {
 		<ul>
 			{boards.map((board) => {
 				return (
-					<li key={board.id}>
-						{board.id} - {board.name}
+					<li key={board.boardId}>
+						{board.boardId} - {board.name}
 					</li>
 				);
 			})}

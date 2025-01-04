@@ -17,7 +17,7 @@ export class ItemsStorage {
     return this.instance ?? (this.instance = new ItemsStorage());
   }
 
-  public getItems(): Item[] | null {
+  public getItems(): Item[] {
     try {
       const items = this.storage.getItems();
       if (!isValidItems(items)) {
@@ -27,7 +27,7 @@ export class ItemsStorage {
       return items;
     } catch (error: unknown) {
       this.logError(error);
-      return null;
+      return [];
     }
   }
 
@@ -70,20 +70,3 @@ export class ItemsStorage {
     console.error(errorMessage);
   }
 }
-
-// export const itemsStorage = ItemsStorage.getInstance();
-
-
-const books = [
-  { id: 0, name: "You don't know JS" },
-  { id: 1, name: 'Eloquent JavaScript' },
-  { id: 2, name: 'JavaScript: The Good Parts' },
-];
-
-const lastBookIndex = books.findIndex(book => book.name === 'JavaScript: The Good Parts');
-if (lastBookIndex !== -1) {
-  books.splice(lastBookIndex, 1, { id: 2, name: 'JavaScript: The Definitive Guide' });
-}
-console.log(books);
-// Output: [{ id: 0, name: "You don't know JS" }, { id: 1, name: "Eloquent JavaScript" }, { id: 2, name: "JavaScript: The Definitive Guide" }]
-
