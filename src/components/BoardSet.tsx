@@ -3,6 +3,7 @@ import { HandlerContext } from '../contexts/HandlerContext';
 import { SavedBoard, UnitModel } from '../models/UnitModel';
 import LevelMeter from './LevelMeter/LevelMeter';
 import DefaultBoards from '../assets/defaultBoards.json';
+import BoardList from '@/components/BoardList/BoardList';
 
 export default function BoardSet() {
 	const [statusMsg, setStatusMsg] = useState('');
@@ -158,6 +159,8 @@ export default function BoardSet() {
 				orientation={sliderOrientation}
 				size={'16rem'}
 			/>
+
+			<BoardList boards={boards} />
 
 			<div>
 				{/* <Pedalboard
